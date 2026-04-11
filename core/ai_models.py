@@ -22,13 +22,13 @@ class ModelEntry:
 
 MODEL_CHAIN: list[ModelEntry] = [
     ModelEntry(
+        api_key=os.environ.get("OPENAI_API_KEY", ""),
+        model="gpt-4o-mini",
+    ),
+    ModelEntry(
         api_key=os.environ.get("OPENROUTER_API_KEY", ""),
         base_url="https://openrouter.ai/api/v1",
         model="qwen/qwen3.5-flash-02-23",
         extra_body={"thinking": {"type": "disabled"}},
-    ),
-    ModelEntry(
-        api_key=os.environ.get("OPENAI_API_KEY", ""),
-        model="gpt-4o-mini",
     ),
 ]

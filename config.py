@@ -30,7 +30,7 @@ AI_TEMPERATURE: float = 0.2
 AI_MAX_TOKENS: int = 1000
 
 # Verification defaults
-DEFAULT_TIMEOUT_SEC: int = 300          # 5 minutes
+DEFAULT_TIMEOUT_SEC: int = 120          # 2 minutes
 MAX_CONVERSATION_ROUNDS: int = 10       # max stored conversation turns
 MAX_USER_ANSWER_ROUNDS: int = 5         # max user answer rounds before auto-timeout
 MAX_MESSAGE_LENGTH: int = 50            # characters; longer messages → immediate kick
