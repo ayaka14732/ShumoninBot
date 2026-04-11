@@ -108,7 +108,7 @@ async def delete_message(bot: Bot, chat_id: int, message_id: int) -> bool:
         logger.debug("Deleted message %s in chat %s", message_id, chat_id)
         return True
     except TelegramError as e:
-        logger.debug("Could not delete message %s in chat %s: %s", message_id, chat_id, e)
+        logger.warning("Could not delete message %s in chat %s: %s", message_id, chat_id, e)
         return False
 
 

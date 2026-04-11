@@ -43,17 +43,15 @@ async def cmd_report(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None
     reported_user = replied.from_user
     reported_user_id = reported_user.id
 
-    # Pre-check: do not allow reporting the bot itself
-    if reported_user.is_bot:
-        return
-
-    # Pre-check: do not allow reporting admins
+    # Pre-check: do not allow reporting admins — delete the audacious /report message
     try:
         member = await bot.get_chat_member(chat_id, reported_user_id)
         if member.status in ("administrator", "creator"):
+            await delete_message(bot, chat_id, update.message.message_id)
             return
     except Exception as exc:
         logger.warning("Failed to check reported user status: %s", exc)
+        await delete_message(bot, chat_id, update.message.message_id)
         return
 
     # Extract message content for AI judgment
@@ -115,10 +113,15 @@ def _extract_message_content(message) -> str:
     if message.audio:
         parts.append("[Audio]")
 
-    # Include forward info if available
-    if message.forward_from:
-        parts.append(f"[Forwarded from: {message.forward_from.full_name}]")
-    if message.forward_from_chat:
-        parts.append(f"[Forwarded from channel: {message.forward_from_chat.title}]")
+    # Include forward info if available (PTB v20+: forward_origin replaces forward_from)
+    if message.forward_origin:
+        origin = message.forward_origin
+        origin_type = type(origin).__name__
+        if hasattr(origin, "sender_user") and origin.sender_user:
+            parts.append(f"[Forwarded from: {origin.sender_user.full_name}]")
+        elif hasattr(origin, "chat") and origin.chat:
+            parts.append(f"[Forwarded from channel: {origin.chat.title}]")
+        else:
+            parts.append(f"[Forwarded ({origin_type})]")
 
     return " ".join(parts).strip()

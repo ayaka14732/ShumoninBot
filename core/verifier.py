@@ -5,16 +5,10 @@ All AI call logic: name pre-check, verification judgment, spam judgment.
 
 import json
 import logging
-import os
 from pathlib import Path
 from openai import OpenAI
-from config import (
-    OPENROUTER_API_KEY,
-    OPENROUTER_BASE_URL,
-    AI_MODEL,
-    AI_TEMPERATURE,
-    AI_MAX_TOKENS,
-)
+from config import AI_TEMPERATURE, AI_MAX_TOKENS
+from .ai_models import MODEL_CHAIN
 
 logger = logging.getLogger(__name__)
 
@@ -28,39 +22,55 @@ NAME_CHECK_PROMPT = _load_prompt("name_check.txt")
 VERIFICATION_PROMPT_TEMPLATE = _load_prompt("verification.txt")
 SPAM_CHECK_PROMPT_TEMPLATE = _load_prompt("spam_check.txt")
 
-# OpenAI-compatible client pointed at OpenRouter
-_client = OpenAI(
-    api_key=OPENROUTER_API_KEY,
-    base_url=OPENROUTER_BASE_URL,
-)
+# Build one OpenAI-compatible client per configured model entry (skip entries with no key)
+_model_clients = [
+    (
+        OpenAI(api_key=e.api_key, **({"base_url": e.base_url} if e.base_url else {})),
+        e,
+    )
+    for e in MODEL_CHAIN
+    if e.api_key
+]
+
+
+def _parse_response(raw: str) -> dict:
+    """Strip Markdown fences if present and parse JSON."""
+    raw = raw.strip()
+    if raw.startswith("```"):
+        lines = raw.splitlines()
+        inner = lines[1:-1] if lines[-1].strip() == "```" else lines[1:]
+        raw = "\n".join(inner).strip()
+    return json.loads(raw)
 
 
 def _call_ai(system_prompt: str, user_content: str) -> dict:
     """
-    Call the AI model and return the parsed JSON response dict.
-    Raises ValueError if the response cannot be parsed as JSON.
+    Try each model in MODEL_CHAIN in order, returning on the first success.
+    Raises the last exception if all models fail.
     """
-    response = _client.chat.completions.create(
-        model=AI_MODEL,
-        temperature=AI_TEMPERATURE,
-        max_tokens=AI_MAX_TOKENS,
-        messages=[
-            {"role": "system", "content": system_prompt},
-            {"role": "user", "content": user_content},
-        ],
-        extra_body={"thinking": {"type": "disabled"}},
-    )
-    raw = response.choices[0].message.content.strip()
-    logger.debug("AI raw response: %s", raw)
-
-    # Strip Markdown code fences if present
-    if raw.startswith("```"):
-        lines = raw.splitlines()
-        # Remove first and last fence lines
-        inner = lines[1:-1] if lines[-1].strip() == "```" else lines[1:]
-        raw = "\n".join(inner).strip()
-
-    return json.loads(raw)
+    messages = [
+        {"role": "system", "content": system_prompt},
+        {"role": "user", "content": user_content},
+    ]
+    last_exc: Exception | None = None
+    for client, entry in _model_clients:
+        try:
+            kwargs: dict = dict(
+                model=entry.model,
+                temperature=AI_TEMPERATURE,
+                max_tokens=AI_MAX_TOKENS,
+                messages=messages,
+            )
+            if entry.extra_body:
+                kwargs["extra_body"] = entry.extra_body
+            response = client.chat.completions.create(**kwargs)
+            raw = response.choices[0].message.content
+            logger.debug("AI raw response (%s): %s", entry.model, raw)
+            return _parse_response(raw)
+        except Exception as exc:
+            logger.warning("Model %s failed (%s), trying next", entry.model, exc)
+            last_exc = exc
+    raise last_exc or RuntimeError("No AI models configured in MODEL_CHAIN")
 
 
 def check_name(display_name: str, username: str) -> dict:

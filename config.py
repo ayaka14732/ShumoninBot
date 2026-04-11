@@ -11,7 +11,7 @@ load_dotenv()
 # Telegram Bot Token (required)
 TELEGRAM_BOT_TOKEN: str = os.environ.get("TELEGRAM_BOT_TOKEN", "")
 
-# OpenRouter API Key (required)
+# OpenRouter API Key — used for startup validation only; model config lives in ai_models.py
 OPENROUTER_API_KEY: str = os.environ.get("OPENROUTER_API_KEY", "")
 
 # Comma-separated list of allowed chat IDs, e.g. "-100123456,-100654321"
@@ -24,10 +24,6 @@ ALLOWED_CHAT_IDS: set[int] = (
 
 # SQLite database file path
 DB_PATH: str = os.environ.get("DB_PATH", "bot.db")
-
-# OpenRouter model
-AI_MODEL: str = "qwen/qwen3.5-flash-02-23"
-OPENROUTER_BASE_URL: str = "https://openrouter.ai/api/v1"
 
 # AI parameters
 AI_TEMPERATURE: float = 0.2

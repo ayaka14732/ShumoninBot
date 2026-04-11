@@ -41,7 +41,7 @@ async def handle_success(bot: Bot, chat_id: int, user_id: int) -> None:
         mention = f'<a href="tg://user?id={user_id}">User</a>'
         welcome_msg = await bot.send_message(
             chat_id=chat_id,
-            text=f"✅ {mention} has passed verification. Welcome!",
+            text=f"✅ {mention} has passed verification.",
             parse_mode="HTML",
         )
         await asyncio.sleep(10)
