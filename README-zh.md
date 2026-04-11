@@ -49,6 +49,16 @@ shumonin-bot/
 - `openai` (用於相容 OpenRouter)
 - `python-dotenv`
 
+## BotFather 設定
+
+將機器人加入群組前，必須先關閉隱私模式，讓機器人能讀取所有訊息：
+
+1. 在 Telegram 開啟 [@BotFather](https://t.me/BotFather)。
+2. 發送 `/mybots`，選擇你的機器人。
+3. 進入 **Bot Settings** > **Group Privacy** > **Turn off**。
+
+若未完成此步驟，機器人只能收到直接提及它的訊息，將無法正常運作。
+
 ## 安裝與執行
 
 1. 在專案根目錄建立 `.env` 檔案：

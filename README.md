@@ -1,5 +1,7 @@
 # Shumonin Bot
 
+[[中文說明]](README-zh.md)
+
 **Shumonin Bot** is a Telegram group management bot that uses AI (Qwen3.5-Flash via OpenRouter) to verify new members through multi-turn conversations. It prevents spam, enforces strict entry criteria, and provides a seamless setup experience for group administrators.
 
 ## Features
@@ -47,6 +49,16 @@ shumonin-bot/
 - `python-telegram-bot`
 - `openai` (for OpenRouter compatibility)
 - `python-dotenv`
+
+## BotFather Configuration
+
+Before adding the bot to a group, you must disable Privacy Mode so the bot can read all messages:
+
+1. Open [@BotFather](https://t.me/BotFather) on Telegram.
+2. Send `/mybots` and select your bot.
+3. Go to **Bot Settings** > **Group Privacy** > **Turn off**.
+
+Without this step, the bot will only receive messages that directly mention it and will not function correctly.
 
 ## Setup & Execution
 
