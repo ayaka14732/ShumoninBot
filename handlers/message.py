@@ -151,7 +151,7 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
                     chat_id=chat_id,
                     text=(
                         "⚠️ An error occurred. Please try answering the verification question again.\n\n"
-                        f"<b>Question:</b>\n{_escape_html(settings['question'])}"
+                        f"{_escape_html(settings['question'])}"
                     ),
                     parse_mode="HTML",
                 )
