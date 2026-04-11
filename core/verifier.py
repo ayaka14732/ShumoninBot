@@ -97,11 +97,12 @@ def verify_answer(
         history_lines.append(f"{role_label}: {msg['content']}")
     history_text = "\n".join(history_lines) if history_lines else "(no previous conversation)"
 
-    system_prompt = VERIFICATION_PROMPT_TEMPLATE.format(
-        question=question,
-        expected=expected,
-        conversation_history=history_text,
-        user_message=user_message,
+    system_prompt = (
+        VERIFICATION_PROMPT_TEMPLATE
+        .replace("{question}", question)
+        .replace("{expected}", expected)
+        .replace("{conversation_history}", history_text)
+        .replace("{user_message}", user_message)
     )
 
     try:
@@ -121,7 +122,7 @@ def check_spam(message_content: str) -> dict:
     Determine whether a reported message is spam.
     Returns: {"result": "spam" | "not_spam", "reason": str}
     """
-    system_prompt = SPAM_CHECK_PROMPT_TEMPLATE.format(message_content=message_content)
+    system_prompt = SPAM_CHECK_PROMPT_TEMPLATE.replace("{message_content}", message_content)
     try:
         result = _call_ai(system_prompt, message_content)
         if result.get("result") not in ("spam", "not_spam"):
