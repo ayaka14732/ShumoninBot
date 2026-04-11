@@ -108,11 +108,7 @@ async def _process_new_member(
     time_str = f"{minutes}m {seconds}s" if seconds else f"{minutes}m"
 
     mention = f'<a href="tg://user?id={user_id}">{_escape_html(display_name)}</a>'
-    text = (
-        f"{mention} {_escape_html(settings['question'])}\n\n"
-        f"⏱ You have <b>{time_str}</b> to answer.\n"
-        f"⚠️ Attempts remaining: <b>{remaining}</b> (banned after {BAN_THRESHOLD} failures)"
-    )
+    text = f"{mention} {_escape_html(settings['question'])}"
 
     try:
         msg = await bot.send_message(
