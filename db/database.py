@@ -49,6 +49,7 @@ def init_db() -> None:
                 status          TEXT    NOT NULL DEFAULT 'pending',
                 ai_fail_count   INTEGER NOT NULL DEFAULT 0,
                 answer_rounds   INTEGER NOT NULL DEFAULT 0,
+                pending_msg_ids TEXT    NOT NULL DEFAULT '[]',
                 PRIMARY KEY (chat_id, user_id)
             );
 
@@ -70,4 +71,13 @@ def init_db() -> None:
                 PRIMARY KEY (chat_id, admin_user_id)
             );
         """)
+    # Migration: add pending_msg_ids column if it doesn't exist yet
+    try:
+        conn.execute(
+            "ALTER TABLE pending_users ADD COLUMN pending_msg_ids TEXT NOT NULL DEFAULT '[]'"
+        )
+        logger.info("Migrated: added pending_msg_ids column to pending_users")
+    except sqlite3.OperationalError:
+        pass  # column already exists
+
     logger.info("Database initialized at %s", DB_PATH)

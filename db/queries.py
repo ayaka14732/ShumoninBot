@@ -191,6 +191,36 @@ def reset_ai_fail_count(chat_id: int, user_id: int) -> None:
         )
 
 
+def append_pending_msg_id(chat_id: int, user_id: int, msg_id: int) -> None:
+    """Record a message ID sent by the pending user during this verification session."""
+    conn = get_conn()
+    row = conn.execute(
+        "SELECT pending_msg_ids FROM pending_users WHERE chat_id = ? AND user_id = ?",
+        (chat_id, user_id)
+    ).fetchone()
+    if not row:
+        return
+    ids = json.loads(row["pending_msg_ids"])
+    ids.append(msg_id)
+    with conn:
+        conn.execute(
+            "UPDATE pending_users SET pending_msg_ids = ? WHERE chat_id = ? AND user_id = ?",
+            (json.dumps(ids), chat_id, user_id)
+        )
+
+
+def get_pending_msg_ids(chat_id: int, user_id: int) -> list[int]:
+    """Return all message IDs sent by the pending user during this verification session."""
+    conn = get_conn()
+    row = conn.execute(
+        "SELECT pending_msg_ids FROM pending_users WHERE chat_id = ? AND user_id = ?",
+        (chat_id, user_id)
+    ).fetchone()
+    if not row:
+        return []
+    return json.loads(row["pending_msg_ids"])
+
+
 def get_all_timed_out_pending() -> list[dict]:
     """Return all pending records that have passed their expire_time."""
     now = int(time.time())

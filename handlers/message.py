@@ -59,6 +59,9 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
     bot: Bot = context.bot
     message_text = update.message.text or ""
 
+    # Track this message so it can be deleted if the user fails verification
+    queries.append_pending_msg_id(chat_id, user_id, update.message.message_id)
+
     # Pre-check: timeout
     if int(time.time()) > pending["expire_time"]:
         logger.info("User %s in chat %s timed out during message handling", user_id, chat_id)

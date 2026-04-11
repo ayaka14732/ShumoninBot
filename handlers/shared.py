@@ -76,6 +76,11 @@ async def handle_failure(
     if msg_id:
         await actions.delete_message(bot, chat_id, msg_id)
 
+    # Delete all messages the user sent during this verification session
+    pending_msg_ids = queries.get_pending_msg_ids(chat_id, user_id)
+    for pmid in pending_msg_ids:
+        await actions.delete_message(bot, chat_id, pmid)
+
     # Increment failures
     total_failures = queries.increment_total_failures(chat_id, user_id)
     logger.info(
