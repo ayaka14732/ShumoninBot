@@ -109,9 +109,8 @@ async def _process_new_member(
 
     mention = f'<a href="tg://user?id={user_id}">{_escape_html(display_name)}</a>'
     text = (
-        f"👋 Welcome, {mention}!\n\n"
-        f"Please answer the following verification question to join this group.\n\n"
-        f"<b>Question:</b>\n{_escape_html(settings['question'])}\n\n"
+        f"{mention}\n\n"
+        f"{_escape_html(settings['question'])}\n\n"
         f"⏱ You have <b>{time_str}</b> to answer.\n"
         f"⚠️ Attempts remaining: <b>{remaining}</b> (banned after {BAN_THRESHOLD} failures)"
     )

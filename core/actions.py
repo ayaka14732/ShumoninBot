@@ -27,9 +27,10 @@ FULL_PERMISSIONS = ChatPermissions(
     can_pin_messages=False,
 )
 
-# No permissions (used to mute pending users)
+# Restricted permissions for pending users: text-only, no media/polls/stickers.
+# can_send_messages must remain True so users can answer the verification question.
 NO_PERMISSIONS = ChatPermissions(
-    can_send_messages=False,
+    can_send_messages=True,
     can_send_audios=False,
     can_send_documents=False,
     can_send_photos=False,
