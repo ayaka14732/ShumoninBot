@@ -27,6 +27,11 @@ async def _handle_timeout(bot: Bot, record: dict) -> None:
 
     logger.info("Timeout triggered for user %s in chat %s", user_id, chat_id)
 
+    # Delete the "xx joined the group" service message
+    join_msg_id = record.get("join_msg_id")
+    if join_msg_id:
+        await actions.delete_message(bot, chat_id, join_msg_id)
+
     # Delete the verification message
     msg_id = record.get("question_msg_id")
     if msg_id:
