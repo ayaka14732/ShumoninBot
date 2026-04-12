@@ -343,12 +343,7 @@ async def handle_admin_setup_input(
         await update.message.reply_text(
             "<b>Step 2/3:</b>\n\n"
             "Please describe the scoring criteria in natural language.\n"
-            "You can specify which questions require strict answers and which are flexible.\n\n"
-            "<i>Example:\n"
-            '"What is RIME" must be answered with "input method engine/framework".\n'
-            "Vague answers, cute deflections, or \"I can learn\" are not acceptable.\n"
-            "Follow up once; if still wrong, kick.\n"
-            '"Why join" just needs a reasonable answer about learning or discussion.</i>',
+            "You can specify which questions require strict answers and which are flexible.",
             parse_mode="HTML",
         )
 
