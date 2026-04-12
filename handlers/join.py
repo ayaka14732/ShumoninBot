@@ -27,6 +27,8 @@ async def handle_join(update: Update, context: ContextTypes.DEFAULT_TYPE) -> Non
 
     bot: Bot = context.bot
 
+    join_msg_id = update.message.message_id
+
     for member in update.message.new_chat_members:
         # Pre-check: skip bots
         if member.is_bot:
@@ -36,7 +38,7 @@ async def handle_join(update: Update, context: ContextTypes.DEFAULT_TYPE) -> Non
         username = member.username or ""
         display_name = member.full_name or str(user_id)
 
-        await _process_new_member(bot, chat_id, user_id, username, display_name)
+        await _process_new_member(bot, chat_id, user_id, username, display_name, join_msg_id)
 
 
 async def _process_new_member(
@@ -45,6 +47,7 @@ async def _process_new_member(
     user_id: int,
     username: str,
     display_name: str,
+    join_msg_id: int = None,
 ) -> None:
     """Process a single new member joining the group."""
 
@@ -56,6 +59,8 @@ async def _process_new_member(
     if history and history["is_banned"]:
         logger.info("Re-banning already-banned user %s in chat %s", user_id, chat_id)
         await actions.ban_user(bot, chat_id, user_id)
+        if join_msg_id:
+            await actions.delete_message(bot, chat_id, join_msg_id)
         return
 
     # Check if group has verification settings
@@ -86,6 +91,7 @@ async def _process_new_member(
         display_name=display_name,
         expire_time=expire_time,
         attempt=attempt,
+        join_msg_id=join_msg_id,
     )
 
     # --- Name pre-check ---

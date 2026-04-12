@@ -71,6 +71,11 @@ async def handle_failure(
         logger.debug("Failure: record (%s, %s) already processed, skipping", chat_id, user_id)
         return
 
+    # Delete the "xx joined the group" service message
+    join_msg_id = queries.get_pending_join_msg_id(chat_id, user_id)
+    if join_msg_id:
+        await actions.delete_message(bot, chat_id, join_msg_id)
+
     # Delete verification message
     msg_id = queries.get_pending_question_msg_id(chat_id, user_id)
     if msg_id:

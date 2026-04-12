@@ -86,6 +86,7 @@ def insert_pending_user(
     display_name: str,
     expire_time: int,
     attempt: int,
+    join_msg_id: Optional[int] = None,
 ) -> None:
     now = int(time.time())
     conn = get_conn()
@@ -93,9 +94,10 @@ def insert_pending_user(
         conn.execute("""
             INSERT OR REPLACE INTO pending_users
                 (chat_id, user_id, username, display_name, join_time, expire_time,
-                 attempt, question_msg_id, conversation, status, ai_fail_count, answer_rounds)
-            VALUES (?, ?, ?, ?, ?, ?, ?, NULL, '[]', 'pending', 0, 0)
-        """, (chat_id, user_id, username, display_name, now, expire_time, attempt))
+                 attempt, question_msg_id, conversation, status, ai_fail_count, answer_rounds,
+                 join_msg_id)
+            VALUES (?, ?, ?, ?, ?, ?, ?, NULL, '[]', 'pending', 0, 0, ?)
+        """, (chat_id, user_id, username, display_name, now, expire_time, attempt, join_msg_id))
 
 
 def update_pending_question_msg_id(chat_id: int, user_id: int, msg_id: int) -> None:
@@ -114,6 +116,15 @@ def get_pending_question_msg_id(chat_id: int, user_id: int) -> Optional[int]:
         (chat_id, user_id)
     ).fetchone()
     return row["question_msg_id"] if row else None
+
+
+def get_pending_join_msg_id(chat_id: int, user_id: int) -> Optional[int]:
+    conn = get_conn()
+    row = conn.execute(
+        "SELECT join_msg_id FROM pending_users WHERE chat_id = ? AND user_id = ?",
+        (chat_id, user_id)
+    ).fetchone()
+    return row["join_msg_id"] if row else None
 
 
 def update_pending_status(chat_id: int, user_id: int, status: str) -> bool:

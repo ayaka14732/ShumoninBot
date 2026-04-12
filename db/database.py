@@ -71,4 +71,11 @@ def init_db() -> None:
                 PRIMARY KEY (chat_id, admin_user_id)
             );
         """)
+    # Migration: add join_msg_id column to pending_users if it doesn't exist yet
+    try:
+        conn.execute("ALTER TABLE pending_users ADD COLUMN join_msg_id INTEGER")
+        logger.info("Migrated pending_users: added join_msg_id column")
+    except Exception:
+        pass  # Column already exists
+
     logger.info("Database initialized at %s", DB_PATH)
