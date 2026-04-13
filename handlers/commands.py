@@ -302,7 +302,7 @@ async def cmd_help(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         return
 
     text = (
-        "📖 <b>Admin Commands</b>\n\n"
+        "<b>Admin Commands</b>\n\n"
         "/setup — Guided setup: configure question, criteria, and timeout\n"
         "/setquestion — Update the verification question\n"
         "/setexpected — Update the scoring criteria\n"
@@ -372,7 +372,7 @@ async def handle_admin_setup_input(
         question_preview = _escape_html(temp.get("question", ""))
         expected_preview = _escape_html(temp.get("expected", ""))
         await update.message.reply_text(
-            "📋 <b>Please confirm your settings:</b>\n\n"
+            "<b>Please confirm your settings:</b>\n\n"
             f"<b>Question:</b>\n{question_preview}\n\n"
             f"<b>Criteria:</b>\n{expected_preview}\n\n"
             f"<b>Timeout:</b> {minutes} minutes\n\n"
