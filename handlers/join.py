@@ -197,10 +197,6 @@ async def _process_new_member(
         # Fallback: continue with verification
 
     # --- Send verification question ---
-    minutes = timeout_sec // 60
-    seconds = timeout_sec % 60
-    time_str = f"{minutes}m {seconds}s" if seconds else f"{minutes}m"
-
     mention = f'<a href="tg://user?id={user_id}">{_escape_html(display_name)}</a>'
     text = f"{mention} {_escape_html(settings['question'])}"
 
@@ -211,6 +207,7 @@ async def _process_new_member(
             parse_mode="HTML",
         )
         queries.update_pending_question_msg_id(chat_id, user_id, msg.message_id)
+        queries.append_conversation(chat_id, user_id, "assistant", settings["question"])
         logger.info(
             "Verification question sent to user %s in chat %s (expire=%s)",
             user_id, chat_id, expire_time
