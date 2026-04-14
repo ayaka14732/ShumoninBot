@@ -34,13 +34,21 @@ async def handle_join(update: Update, context: ContextTypes.DEFAULT_TYPE) -> Non
     for member in update.message.new_chat_members:
         # Pre-check: skip bots
         if member.is_bot:
+            logger.debug("Skipping bot %s in chat %s (service message path)", member.id, chat_id)
             continue
 
         user_id = member.id
         username = member.username or ""
         display_name = member.full_name or str(user_id)
 
-        await _process_new_member(bot, chat_id, user_id, username, display_name, join_msg_id)
+        logger.info(
+            "Join detected via service message: user=%s (@%s, %r) in chat=%s",
+            user_id, username, display_name, chat_id,
+        )
+        await _process_new_member(
+            bot, chat_id, user_id, username, display_name, join_msg_id,
+            source="service_message",
+        )
 
 
 async def handle_chat_member_join(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
@@ -59,6 +67,7 @@ async def handle_chat_member_join(update: Update, context: ContextTypes.DEFAULT_
 
     user = new_status.user
     if user.is_bot:
+        logger.debug("Skipping bot %s in chat %s (chat_member update path)", user.id, update.effective_chat.id)
         return
 
     chat_id = update.effective_chat.id
@@ -72,8 +81,16 @@ async def handle_chat_member_join(update: Update, context: ContextTypes.DEFAULT_
     username = user.username or ""
     display_name = user.full_name or str(user_id)
 
+    logger.info(
+        "Join detected via chat_member update: user=%s (@%s, %r) in chat=%s, transition=%s→%s",
+        user_id, username, display_name, chat_id,
+        type(old_status).__name__, type(new_status).__name__,
+    )
     # No service message exists for this join, so no join_msg_id
-    await _process_new_member(bot, chat_id, user_id, username, display_name, join_msg_id=None)
+    await _process_new_member(
+        bot, chat_id, user_id, username, display_name, join_msg_id=None,
+        source="chat_member_update",
+    )
 
 
 async def _process_new_member(
@@ -83,8 +100,14 @@ async def _process_new_member(
     username: str,
     display_name: str,
     join_msg_id: int = None,
+    source: str = "unknown",
 ) -> None:
     """Process a single new member joining the group."""
+
+    logger.info(
+        "Processing new member: user=%s (@%s, %r) in chat=%s source=%s join_msg_id=%s",
+        user_id, username, display_name, chat_id, source, join_msg_id,
+    )
 
     # Deduplicate: if the user already has an active pending record (created within
     # the last 10 seconds), this is a duplicate event from the other join path —
@@ -93,9 +116,10 @@ async def _process_new_member(
     if existing and existing["status"] == "pending":
         age = int(time.time()) - existing.get("join_time", 0)
         if age < 10:
-            logger.debug(
-                "Skipping duplicate join event for user %s in chat %s (pending record is %ds old)",
-                user_id, chat_id, age,
+            logger.info(
+                "Duplicate join event suppressed for user=%s in chat=%s source=%s "
+                "(existing pending record is %ds old)",
+                user_id, chat_id, source, age,
             )
             return
 
