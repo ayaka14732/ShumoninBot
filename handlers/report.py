@@ -10,6 +10,7 @@ from telegram.ext import ContextTypes
 from config import ALLOWED_CHAT_IDS
 from core import verifier
 from core.actions import ban_user, delete_message
+from handlers.shared import escape_html
 
 logger = logging.getLogger(__name__)
 
@@ -88,6 +89,68 @@ async def cmd_report(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None
     except Exception as exc:
         logger.error("Spam check error in chat %s: %s", chat_id, exc)
         # Silently ignore on error
+
+
+async def cmd_callmods(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    """
+    Handle /callmods command.
+    Mentions all non-bot group admins to request their attention.
+    Any group member can use this command.
+    """
+    if not update.message:
+        return
+
+    chat_id = update.effective_chat.id
+
+    # Pre-check: whitelist
+    if ALLOWED_CHAT_IDS and chat_id not in ALLOWED_CHAT_IDS:
+        return
+
+    bot: Bot = context.bot
+    caller = update.effective_user
+
+    try:
+        admins = await bot.get_chat_administrators(chat_id)
+    except Exception as exc:
+        logger.warning("Failed to fetch admin list for chat %s: %s", chat_id, exc)
+        return
+
+    # Filter out bots
+    human_admins = [a for a in admins if not a.user.is_bot]
+
+    if not human_admins:
+        return
+
+    # Build mention list
+    mentions = " ".join(
+        f'<a href="tg://user?id={a.user.id}">{escape_html(a.user.full_name)}</a>'
+        for a in human_admins
+    )
+
+    caller_mention = f'<a href="tg://user?id={caller.id}">{escape_html(caller.full_name)}</a>'
+
+    # If replying to a specific message, note it
+    replied = update.message.reply_to_message
+    if replied and replied.from_user:
+        target_mention = escape_html(replied.from_user.full_name)
+        text = (
+            f"{mentions}\n\n"
+            f"{caller_mention} is requesting admin attention regarding a message from <b>{target_mention}</b>."
+        )
+    else:
+        text = (
+            f"{mentions}\n\n"
+            f"{caller_mention} is requesting admin attention."
+        )
+
+    await bot.send_message(chat_id=chat_id, text=text, parse_mode="HTML")
+
+    # Delete the /callmods command message to keep the group tidy
+    await delete_message(bot, chat_id, update.message.message_id)
+
+    logger.info(
+        "User %s called admins in chat %s", caller.id, chat_id
+    )
 
 
 def _extract_message_content(message) -> str:

@@ -10,6 +10,7 @@ from telegram.ext import ContextTypes
 from config import ALLOWED_CHAT_IDS, DEFAULT_TIMEOUT_SEC, BAN_THRESHOLD
 from db import queries
 from core.actions import get_bot_permissions, unban_user
+from handlers.shared import escape_html
 
 logger = logging.getLogger(__name__)
 
@@ -31,9 +32,6 @@ async def _is_admin(bot: Bot, chat_id: int, user_id: int) -> bool:
 def _check_whitelist(chat_id: int) -> bool:
     return not ALLOWED_CHAT_IDS or chat_id in ALLOWED_CHAT_IDS
 
-
-def _escape_html(text: str) -> str:
-    return text.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
 
 
 # ---------------------------------------------------------------------------
@@ -141,8 +139,8 @@ async def cmd_settings(update: Update, context: ContextTypes.DEFAULT_TYPE) -> No
         return
 
     timeout_min = settings["timeout_sec"] // 60
-    question = _escape_html(settings["question"] or "(not set)")
-    expected = _escape_html(settings["expected"] or "(not set)")
+    question = escape_html(settings["question"] or "(not set)")
+    expected = escape_html(settings["expected"] or "(not set)")
 
     text = (
         "📋 <b>Current Settings</b>\n"
@@ -313,7 +311,8 @@ async def cmd_help(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         "/cancel — Cancel the current setup session\n"
         "/help — Show this help message\n\n"
         "<b>User Commands</b>\n\n"
-        "/report — Reply to a message to report it as spam"
+        "/report — Reply to a message to report it as spam\n"
+        "/callmods — Mention all group admins to request their attention"
     )
     await update.message.reply_text(text, parse_mode="HTML")
 
@@ -369,8 +368,8 @@ async def handle_admin_setup_input(
         temp["timeout_sec"] = minutes * 60
         queries.upsert_admin_session(chat_id, user_id, "setup_confirm", temp)
 
-        question_preview = _escape_html(temp.get("question", ""))
-        expected_preview = _escape_html(temp.get("expected", ""))
+        question_preview = escape_html(temp.get("question", ""))
+        expected_preview = escape_html(temp.get("expected", ""))
         await update.message.reply_text(
             "<b>Please confirm your settings:</b>\n\n"
             f"<b>Question:</b>\n{question_preview}\n\n"

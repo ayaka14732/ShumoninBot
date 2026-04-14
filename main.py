@@ -34,7 +34,7 @@ from handlers.commands import (
     cmd_confirm,
     cmd_help,
 )
-from handlers.report import cmd_report
+from handlers.report import cmd_report, cmd_callmods
 
 # Configure logging
 logging.basicConfig(
@@ -76,6 +76,7 @@ def main() -> None:
 
     # Register User Commands
     application.add_handler(CommandHandler("report", cmd_report))
+    application.add_handler(CommandHandler("callmods", cmd_callmods))
 
     # Register Event Handlers
     # 1. New chat members

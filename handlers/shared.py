@@ -1,7 +1,7 @@
 """
 handlers/shared.py
-Shared verification outcome flows: handle_success, handle_failure.
-Used by message.py, join.py, and scheduler.py.
+Shared utilities and verification outcome flows: handle_success, handle_failure.
+Used by message.py, join.py, scheduler.py, commands.py, and report.py.
 """
 
 import asyncio
@@ -12,6 +12,10 @@ from db import queries
 from core import actions
 
 logger = logging.getLogger(__name__)
+
+
+def escape_html(text: str) -> str:
+    return text.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
 
 
 async def handle_success(bot: Bot, chat_id: int, user_id: int) -> None:
