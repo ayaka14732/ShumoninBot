@@ -15,6 +15,11 @@ from core import actions, verifier
 
 logger = logging.getLogger(__name__)
 
+# How long (seconds) to treat a second join event as a duplicate of the first.
+# Both the service-message path and the chat_member-update path can fire for the
+# same join; this window prevents sending two verification messages.
+_DEDUP_WINDOW_SEC = 10
+
 
 async def handle_join(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     """Entry point for new_chat_members service message events."""
@@ -59,10 +64,14 @@ async def handle_chat_member_join(update: Update, context: ContextTypes.DEFAULT_
     old_status = update.chat_member.old_chat_member
     new_status = update.chat_member.new_chat_member
 
-    # Only handle transitions into the group (left/banned → member/restricted)
+    # Only handle transitions into the group (left/banned → member/restricted).
+    # Guard against ChatMemberRestricted with is_member=False, which represents
+    # a restriction applied to a user not currently in the chat — not a join.
     if not isinstance(old_status, (ChatMemberLeft, ChatMemberBanned)):
         return
     if not isinstance(new_status, (ChatMemberMember, ChatMemberRestricted)):
+        return
+    if isinstance(new_status, ChatMemberRestricted) and not new_status.is_member:
         return
 
     user = new_status.user
@@ -99,7 +108,7 @@ async def _process_new_member(
     user_id: int,
     username: str,
     display_name: str,
-    join_msg_id: int = None,
+    join_msg_id: int | None = None,
     source: str = "unknown",
 ) -> None:
     """Process a single new member joining the group."""
@@ -110,12 +119,19 @@ async def _process_new_member(
     )
 
     # Deduplicate: if the user already has an active pending record (created within
-    # the last 10 seconds), this is a duplicate event from the other join path —
-    # skip to avoid sending a second verification message.
+    # _DEDUP_WINDOW_SEC seconds), this is a duplicate event from the other join path.
+    # Before bailing out, backfill join_msg_id if the existing record is missing it
+    # (happens when chat_member_update fires first and creates the record with NULL).
     existing = queries.get_pending_user(chat_id, user_id)
     if existing and existing["status"] == "pending":
         age = int(time.time()) - existing.get("join_time", 0)
-        if age < 10:
+        if age < _DEDUP_WINDOW_SEC:
+            if join_msg_id and not existing.get("join_msg_id"):
+                queries.update_pending_join_msg_id_if_null(chat_id, user_id, join_msg_id)
+                logger.info(
+                    "Backfilled join_msg_id=%s for user=%s in chat=%s (record created by %s path)",
+                    join_msg_id, user_id, chat_id, source,
+                )
             logger.info(
                 "Duplicate join event suppressed for user=%s in chat=%s source=%s "
                 "(existing pending record is %ds old)",
