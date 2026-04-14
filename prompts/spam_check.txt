@@ -23,6 +23,3 @@
 你只能返回 JSON，格式如下：
 {"result": "spam" | "not_spam", "reason": "原因（供日誌使用）"}
 不得包含任何其他內容。
-
-[被舉報的訊息內容]
-{message_content}
