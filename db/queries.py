@@ -127,6 +127,18 @@ def get_pending_join_msg_id(chat_id: int, user_id: int) -> Optional[int]:
     return row["join_msg_id"] if row else None
 
 
+def update_pending_join_msg_id_if_null(chat_id: int, user_id: int, join_msg_id: int) -> None:
+    """Set join_msg_id only if it is currently NULL (used to enrich a record created by the
+    chat_member_update path when the service-message path arrives later)."""
+    conn = get_conn()
+    with conn:
+        conn.execute(
+            "UPDATE pending_users SET join_msg_id = ? "
+            "WHERE chat_id = ? AND user_id = ? AND join_msg_id IS NULL",
+            (join_msg_id, chat_id, user_id),
+        )
+
+
 def update_pending_status(chat_id: int, user_id: int, status: str) -> bool:
     """
     Idempotent status update: only updates if current status is 'pending'.

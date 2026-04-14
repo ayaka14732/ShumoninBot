@@ -1,11 +1,13 @@
 """
 handlers/join.py
-Handles new_chat_members events.
+Handles new member join events via both new_chat_members service messages and
+chat_member updates (the latter is required for large groups where Telegram no
+longer sends service messages for non-bot joins).
 """
 
 import logging
 import time
-from telegram import Update, Bot
+from telegram import Update, Bot, ChatMemberLeft, ChatMemberBanned, ChatMemberMember, ChatMemberRestricted
 from telegram.ext import ContextTypes
 from config import ALLOWED_CHAT_IDS, DEFAULT_TIMEOUT_SEC, BAN_THRESHOLD
 from db import queries
@@ -13,9 +15,14 @@ from core import actions, verifier
 
 logger = logging.getLogger(__name__)
 
+# How long (seconds) to treat a second join event as a duplicate of the first.
+# Both the service-message path and the chat_member-update path can fire for the
+# same join; this window prevents sending two verification messages.
+_DEDUP_WINDOW_SEC = 10
+
 
 async def handle_join(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    """Entry point for new_chat_members events."""
+    """Entry point for new_chat_members service message events."""
     if not update.message or not update.message.new_chat_members:
         return
 
@@ -32,13 +39,67 @@ async def handle_join(update: Update, context: ContextTypes.DEFAULT_TYPE) -> Non
     for member in update.message.new_chat_members:
         # Pre-check: skip bots
         if member.is_bot:
+            logger.debug("Skipping bot %s in chat %s (service message path)", member.id, chat_id)
             continue
 
         user_id = member.id
         username = member.username or ""
         display_name = member.full_name or str(user_id)
 
-        await _process_new_member(bot, chat_id, user_id, username, display_name, join_msg_id)
+        logger.info(
+            "Join detected via service message: user=%s (@%s, %r) in chat=%s",
+            user_id, username, display_name, chat_id,
+        )
+        await _process_new_member(
+            bot, chat_id, user_id, username, display_name, join_msg_id,
+            source="service_message",
+        )
+
+
+async def handle_chat_member_join(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    """Entry point for chat_member update events (covers joins that produce no service message)."""
+    if not update.chat_member:
+        return
+
+    old_status = update.chat_member.old_chat_member
+    new_status = update.chat_member.new_chat_member
+
+    # Only handle transitions into the group (left/banned → member/restricted).
+    # Guard against ChatMemberRestricted with is_member=False, which represents
+    # a restriction applied to a user not currently in the chat — not a join.
+    if not isinstance(old_status, (ChatMemberLeft, ChatMemberBanned)):
+        return
+    if not isinstance(new_status, (ChatMemberMember, ChatMemberRestricted)):
+        return
+    if isinstance(new_status, ChatMemberRestricted) and not new_status.is_member:
+        return
+
+    user = new_status.user
+    if user.is_bot:
+        logger.debug("Skipping bot %s in chat %s (chat_member update path)", user.id, update.effective_chat.id)
+        return
+
+    chat_id = update.effective_chat.id
+
+    # Pre-check: whitelist
+    if ALLOWED_CHAT_IDS and chat_id not in ALLOWED_CHAT_IDS:
+        return
+
+    bot: Bot = context.bot
+    user_id = user.id
+    username = user.username or ""
+    display_name = user.full_name or str(user_id)
+
+    logger.info(
+        "Join detected via chat_member update: user=%s (@%s, %r) in chat=%s, transition=%s→%s",
+        user_id, username, display_name, chat_id,
+        type(old_status).__name__, type(new_status).__name__,
+    )
+    # No service message exists for this join, so no join_msg_id
+    await _process_new_member(
+        bot, chat_id, user_id, username, display_name, join_msg_id=None,
+        source="chat_member_update",
+    )
 
 
 async def _process_new_member(
@@ -47,9 +108,36 @@ async def _process_new_member(
     user_id: int,
     username: str,
     display_name: str,
-    join_msg_id: int = None,
+    join_msg_id: int | None = None,
+    source: str = "unknown",
 ) -> None:
     """Process a single new member joining the group."""
+
+    logger.info(
+        "Processing new member: user=%s (@%s, %r) in chat=%s source=%s join_msg_id=%s",
+        user_id, username, display_name, chat_id, source, join_msg_id,
+    )
+
+    # Deduplicate: if the user already has an active pending record (created within
+    # _DEDUP_WINDOW_SEC seconds), this is a duplicate event from the other join path.
+    # Before bailing out, backfill join_msg_id if the existing record is missing it
+    # (happens when chat_member_update fires first and creates the record with NULL).
+    existing = queries.get_pending_user(chat_id, user_id)
+    if existing and existing["status"] == "pending":
+        age = int(time.time()) - existing.get("join_time", 0)
+        if age < _DEDUP_WINDOW_SEC:
+            if join_msg_id and not existing.get("join_msg_id"):
+                queries.update_pending_join_msg_id_if_null(chat_id, user_id, join_msg_id)
+                logger.info(
+                    "Backfilled join_msg_id=%s for user=%s in chat=%s (record created by %s path)",
+                    join_msg_id, user_id, chat_id, source,
+                )
+            logger.info(
+                "Duplicate join event suppressed for user=%s in chat=%s source=%s "
+                "(existing pending record is %ds old)",
+                user_id, chat_id, source, age,
+            )
+            return
 
     # Update last join time
     queries.update_last_join_time(chat_id, user_id)

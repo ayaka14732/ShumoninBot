@@ -19,7 +19,7 @@ from telegram.ext import (
 from config import TELEGRAM_BOT_TOKEN, OPENROUTER_API_KEY
 from db.database import init_db
 from core.scheduler import run_timeout_poll, process_startup_timeouts
-from handlers.join import handle_join
+from handlers.join import handle_join, handle_chat_member_join
 from handlers.message import handle_message
 from handlers.leave import handle_leave
 from handlers.commands import (
@@ -79,8 +79,13 @@ def main() -> None:
     application.add_handler(CommandHandler("callmods", cmd_callmods))
 
     # Register Event Handlers
-    # 1. New chat members
+    # 1a. New chat members via service message (small groups / direct joins)
     application.add_handler(MessageHandler(filters.StatusUpdate.NEW_CHAT_MEMBERS, handle_join))
+
+    # 1b. New chat members via chat_member update (large groups where Telegram omits service messages).
+    # Must be in a separate group from handler 3 because PTB only fires the first matching
+    # ChatMemberHandler within a group.
+    application.add_handler(ChatMemberHandler(handle_chat_member_join, ChatMemberHandler.CHAT_MEMBER), group=1)
 
     # 2. General group messages (handles both AI verification answers and admin setup inputs)
     application.add_handler(MessageHandler(
@@ -88,8 +93,8 @@ def main() -> None:
         handle_message
     ))
 
-    # 3. Chat member status changes (left, kicked)
-    application.add_handler(ChatMemberHandler(handle_leave, ChatMemberHandler.CHAT_MEMBER))
+    # 3. Chat member status changes (left, kicked). Group 2 so it runs independently of handler 1b.
+    application.add_handler(ChatMemberHandler(handle_leave, ChatMemberHandler.CHAT_MEMBER), group=2)
 
     # Post-init hook to start background tasks
     async def post_init(app: Application) -> None:
