@@ -48,3 +48,26 @@ async def handle_leave(update: Update, context: ContextTypes.DEFAULT_TYPE) -> No
         msg_id = pending.get("question_msg_id")
         if msg_id:
             await delete_message(bot, chat_id, msg_id)
+
+
+async def handle_left_member_service_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    """
+    Delete the 'Bot removed User' service message that Telegram generates in small groups
+    when the bot kicks a user. Only deletes when the removal was bot-initiated (status == 'failed').
+    """
+    if not update.message or not update.message.left_chat_member:
+        return
+
+    chat_id = update.effective_chat.id
+
+    # Pre-check: whitelist
+    if ALLOWED_CHAT_IDS and chat_id not in ALLOWED_CHAT_IDS:
+        return
+
+    user_id = update.message.left_chat_member.id
+    pending = queries.get_pending_user(chat_id, user_id)
+    if not pending or pending["status"] != "failed":
+        return
+
+    bot: Bot = context.bot
+    await delete_message(bot, chat_id, update.message.message_id)

@@ -66,6 +66,7 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
 
     if pending["status"] != "pending":
         return
+
     message_text = update.message.text or ""
 
     # Pre-check: verification expiry

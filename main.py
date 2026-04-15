@@ -21,7 +21,7 @@ from db.database import init_db
 from core.scheduler import run_expiry_poll, process_startup_expiries
 from handlers.join import handle_join, handle_chat_member_join
 from handlers.message import handle_message
-from handlers.leave import handle_leave
+from handlers.leave import handle_leave, handle_left_member_service_message
 from handlers.commands import (
     cmd_setup,
     cmd_setquestion,
@@ -95,6 +95,9 @@ def main() -> None:
 
     # 3. Chat member status changes (left, kicked). Group 2 so it runs independently of handler 1b.
     application.add_handler(ChatMemberHandler(handle_leave, ChatMemberHandler.CHAT_MEMBER), group=2)
+
+    # 4. Delete the "Bot removed User" service message in small groups after a bot-initiated kick.
+    application.add_handler(MessageHandler(filters.StatusUpdate.LEFT_CHAT_MEMBER, handle_left_member_service_message))
 
     # Post-init hook to start background tasks
     async def post_init(app: Application) -> None:
