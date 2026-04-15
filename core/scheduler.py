@@ -36,6 +36,10 @@ async def _handle_expiry(bot: Bot, record: dict) -> None:
     if msg_id:
         await actions.delete_message(bot, chat_id, msg_id)
 
+    # Delete user's messages sent during verification (best-effort)
+    for pending_msg_id in queries.get_pending_msg_ids(chat_id, user_id):
+        await actions.delete_message(bot, chat_id, pending_msg_id)
+
     # Increment failure counter and decide kick vs ban
     total_failures = queries.increment_total_failures(chat_id, user_id)
     if total_failures >= BAN_THRESHOLD:
