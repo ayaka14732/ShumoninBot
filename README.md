@@ -1,4 +1,4 @@
-# Shumonin Bot
+# <img src="avatar.png" width="32" alt=""> Shumonin Bot
 
 一個以 AI 驅動的 Telegram 羣組反垃圾訊息機械人。新成員加入後，機械人會透過多輪對話進行問答，由 AI 判定是否符合入羣資格，不符合則自動踢出或封禁。此外，羣組成員可以舉報可疑訊息，由 AI 判定是否為垃圾內容並自動處理。
 
