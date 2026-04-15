@@ -2,7 +2,7 @@
 main.py
 Entry point for Shumonin Bot — Telegram AI Group Verification Bot.
 Initializes the bot, sets up the database, registers all handlers,
-and starts the background timeout polling task.
+and starts the background expiry polling task.
 """
 
 import asyncio
@@ -18,7 +18,7 @@ from telegram.ext import (
 )
 from config import TELEGRAM_BOT_TOKEN, OPENROUTER_API_KEY
 from db.database import init_db
-from core.scheduler import run_timeout_poll, process_startup_timeouts
+from core.scheduler import run_expiry_poll, process_startup_expiries
 from handlers.join import handle_join, handle_chat_member_join
 from handlers.message import handle_message
 from handlers.leave import handle_leave
@@ -26,7 +26,7 @@ from handlers.commands import (
     cmd_setup,
     cmd_setquestion,
     cmd_setexpected,
-    cmd_settimeout,
+    cmd_setexpiry,
     cmd_settings,
     cmd_unban,
     cmd_status,
@@ -66,7 +66,7 @@ def main() -> None:
     application.add_handler(CommandHandler("setup", cmd_setup))
     application.add_handler(CommandHandler("setquestion", cmd_setquestion))
     application.add_handler(CommandHandler("setexpected", cmd_setexpected))
-    application.add_handler(CommandHandler("settimeout", cmd_settimeout))
+    application.add_handler(CommandHandler("setexpiry", cmd_setexpiry))
     application.add_handler(CommandHandler("settings", cmd_settings))
     application.add_handler(CommandHandler("unban", cmd_unban))
     application.add_handler(CommandHandler("status", cmd_status))
@@ -99,10 +99,10 @@ def main() -> None:
     # Post-init hook to start background tasks
     async def post_init(app: Application) -> None:
         logger.info("Running post-init tasks...")
-        # Process any timeouts that occurred while the bot was offline
-        await process_startup_timeouts(app.bot)
-        # Start the background timeout polling loop
-        asyncio.create_task(run_timeout_poll(app.bot))
+        # Process any verification expiries that occurred while the bot was offline
+        await process_startup_expiries(app.bot)
+        # Start the background expiry polling loop
+        asyncio.create_task(run_expiry_poll(app.bot))
 
     application.post_init = post_init
 

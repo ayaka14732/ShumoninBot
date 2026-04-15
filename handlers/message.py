@@ -62,18 +62,18 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
     # Track this message so it can be deleted if the user fails verification
     queries.append_pending_msg_id(chat_id, user_id, update.message.message_id)
 
-    # Pre-check: timeout
+    # Pre-check: verification expiry
     if int(time.time()) > pending["expire_time"]:
-        logger.info("User %s in chat %s timed out during message handling", user_id, chat_id)
-        updated = queries.update_pending_status(chat_id, user_id, "timeout")
+        logger.info("User %s in chat %s verification expired during message handling", user_id, chat_id)
+        updated = queries.update_pending_status(chat_id, user_id, "expired")
         if updated:
             msg_id = pending.get("question_msg_id")
             if msg_id:
                 from core.actions import delete_message
                 await delete_message(bot, chat_id, msg_id)
-            from core.scheduler import _handle_timeout
-            # Re-use timeout logic (already idempotent)
-            await _handle_timeout(bot, pending)
+            from core.scheduler import _handle_expiry
+            # Re-use expiry logic (already idempotent)
+            await _handle_expiry(bot, pending)
         return
 
     # Pre-check: message too long
@@ -89,10 +89,10 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
     answer_rounds = queries.increment_answer_rounds(chat_id, user_id)
     if answer_rounds > MAX_USER_ANSWER_ROUNDS:
         logger.info(
-            "User %s in chat %s exceeded max answer rounds (%d), timing out",
+            "User %s in chat %s exceeded max answer rounds (%d), expiring verification",
             user_id, chat_id, MAX_USER_ANSWER_ROUNDS
         )
-        updated = queries.update_pending_status(chat_id, user_id, "timeout")
+        updated = queries.update_pending_status(chat_id, user_id, "expired")
         if updated:
             from core.actions import delete_message, kick_user, ban_user
             from db.queries import increment_total_failures, set_user_banned

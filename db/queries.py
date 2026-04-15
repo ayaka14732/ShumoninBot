@@ -6,7 +6,6 @@ All database CRUD operations.
 import json
 import time
 import logging
-from typing import Optional
 from db.database import get_conn
 
 logger = logging.getLogger(__name__)
@@ -15,7 +14,7 @@ logger = logging.getLogger(__name__)
 # group_settings
 # ---------------------------------------------------------------------------
 
-def get_group_settings(chat_id: int) -> Optional[dict]:
+def get_group_settings(chat_id: int) -> dict | None:
     conn = get_conn()
     row = conn.execute(
         "SELECT * FROM group_settings WHERE chat_id = ?", (chat_id,)
@@ -23,24 +22,24 @@ def get_group_settings(chat_id: int) -> Optional[dict]:
     return dict(row) if row else None
 
 
-def upsert_group_settings(chat_id: int, question: str, expected: str, timeout_sec: int) -> None:
+def upsert_group_settings(chat_id: int, question: str, expected: str, expiry_sec: int) -> None:
     conn = get_conn()
     with conn:
         conn.execute("""
-            INSERT INTO group_settings (chat_id, question, expected, timeout_sec)
+            INSERT INTO group_settings (chat_id, question, expected, expiry_sec)
             VALUES (?, ?, ?, ?)
             ON CONFLICT(chat_id) DO UPDATE SET
-                question    = excluded.question,
-                expected    = excluded.expected,
-                timeout_sec = excluded.timeout_sec
-        """, (chat_id, question, expected, timeout_sec))
+                question   = excluded.question,
+                expected   = excluded.expected,
+                expiry_sec = excluded.expiry_sec
+        """, (chat_id, question, expected, expiry_sec))
 
 
 def update_group_question(chat_id: int, question: str) -> None:
     conn = get_conn()
     with conn:
         conn.execute("""
-            INSERT INTO group_settings (chat_id, question, expected, timeout_sec)
+            INSERT INTO group_settings (chat_id, question, expected, expiry_sec)
             VALUES (?, ?, '', 300)
             ON CONFLICT(chat_id) DO UPDATE SET question = excluded.question
         """, (chat_id, question))
@@ -50,27 +49,27 @@ def update_group_expected(chat_id: int, expected: str) -> None:
     conn = get_conn()
     with conn:
         conn.execute("""
-            INSERT INTO group_settings (chat_id, question, expected, timeout_sec)
+            INSERT INTO group_settings (chat_id, question, expected, expiry_sec)
             VALUES (?, '', ?, 300)
             ON CONFLICT(chat_id) DO UPDATE SET expected = excluded.expected
         """, (chat_id, expected))
 
 
-def update_group_timeout(chat_id: int, timeout_sec: int) -> None:
+def update_group_expiry(chat_id: int, expiry_sec: int) -> None:
     conn = get_conn()
     with conn:
         conn.execute("""
-            INSERT INTO group_settings (chat_id, question, expected, timeout_sec)
+            INSERT INTO group_settings (chat_id, question, expected, expiry_sec)
             VALUES (?, '', '', ?)
-            ON CONFLICT(chat_id) DO UPDATE SET timeout_sec = excluded.timeout_sec
-        """, (chat_id, timeout_sec))
+            ON CONFLICT(chat_id) DO UPDATE SET expiry_sec = excluded.expiry_sec
+        """, (chat_id, expiry_sec))
 
 
 # ---------------------------------------------------------------------------
 # pending_users
 # ---------------------------------------------------------------------------
 
-def get_pending_user(chat_id: int, user_id: int) -> Optional[dict]:
+def get_pending_user(chat_id: int, user_id: int) -> dict | None:
     conn = get_conn()
     row = conn.execute(
         "SELECT * FROM pending_users WHERE chat_id = ? AND user_id = ?",
@@ -82,11 +81,11 @@ def get_pending_user(chat_id: int, user_id: int) -> Optional[dict]:
 def insert_pending_user(
     chat_id: int,
     user_id: int,
-    username: Optional[str],
+    username: str | None,
     display_name: str,
     expire_time: int,
     attempt: int,
-    join_msg_id: Optional[int] = None,
+    join_msg_id: int | None = None,
 ) -> None:
     now = int(time.time())
     conn = get_conn()
@@ -109,7 +108,7 @@ def update_pending_question_msg_id(chat_id: int, user_id: int, msg_id: int) -> N
         )
 
 
-def get_pending_question_msg_id(chat_id: int, user_id: int) -> Optional[int]:
+def get_pending_question_msg_id(chat_id: int, user_id: int) -> int | None:
     conn = get_conn()
     row = conn.execute(
         "SELECT question_msg_id FROM pending_users WHERE chat_id = ? AND user_id = ?",
@@ -118,7 +117,7 @@ def get_pending_question_msg_id(chat_id: int, user_id: int) -> Optional[int]:
     return row["question_msg_id"] if row else None
 
 
-def get_pending_join_msg_id(chat_id: int, user_id: int) -> Optional[int]:
+def get_pending_join_msg_id(chat_id: int, user_id: int) -> int | None:
     conn = get_conn()
     row = conn.execute(
         "SELECT join_msg_id FROM pending_users WHERE chat_id = ? AND user_id = ?",
@@ -244,7 +243,7 @@ def get_pending_msg_ids(chat_id: int, user_id: int) -> list[int]:
     return json.loads(row["pending_msg_ids"])
 
 
-def get_all_timed_out_pending() -> list[dict]:
+def get_all_expired_pending() -> list[dict]:
     """Return all pending records that have passed their expire_time."""
     now = int(time.time())
     conn = get_conn()
@@ -259,7 +258,7 @@ def get_all_timed_out_pending() -> list[dict]:
 # user_history
 # ---------------------------------------------------------------------------
 
-def get_user_history(chat_id: int, user_id: int) -> Optional[dict]:
+def get_user_history(chat_id: int, user_id: int) -> dict | None:
     conn = get_conn()
     row = conn.execute(
         "SELECT * FROM user_history WHERE chat_id = ? AND user_id = ?",
@@ -336,7 +335,7 @@ def update_last_join_time(chat_id: int, user_id: int) -> None:
 # admin_sessions
 # ---------------------------------------------------------------------------
 
-def get_admin_session(chat_id: int, admin_user_id: int) -> Optional[dict]:
+def get_admin_session(chat_id: int, admin_user_id: int) -> dict | None:
     conn = get_conn()
     row = conn.execute(
         "SELECT * FROM admin_sessions WHERE chat_id = ? AND admin_user_id = ?",
