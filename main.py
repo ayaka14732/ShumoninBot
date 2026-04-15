@@ -16,7 +16,7 @@ from telegram.ext import (
     ChatMemberHandler,
     filters,
 )
-from config import TELEGRAM_BOT_TOKEN, OPENROUTER_API_KEY
+from config import TELEGRAM_BOT_TOKEN, OPENAI_API_KEY, OPENROUTER_API_KEY
 from db.database import init_db
 from core.scheduler import run_expiry_poll, process_startup_expiries
 from handlers.join import handle_join, handle_chat_member_join
@@ -50,8 +50,8 @@ def main() -> None:
     if not TELEGRAM_BOT_TOKEN:
         logger.error("TELEGRAM_BOT_TOKEN is not set in environment.")
         sys.exit(1)
-    if not OPENROUTER_API_KEY:
-        logger.error("OPENROUTER_API_KEY is not set in environment.")
+    if not OPENAI_API_KEY and not OPENROUTER_API_KEY:
+        logger.error("At least one of OPENAI_API_KEY or OPENROUTER_API_KEY must be set.")
         sys.exit(1)
 
     # Initialize SQLite database
