@@ -339,7 +339,7 @@ async def handle_admin_setup_input(
         temp["question"] = text
         queries.upsert_admin_session(chat_id, user_id, "setup_expected", temp)
         await update.message.reply_text(
-            "<b>Step 2/3:</b>\n\n"
+            "<b>Step 2/2:</b>\n\n"
             "Please describe the scoring criteria in natural language.\n"
             "You can specify which questions require strict answers and which are flexible.",
             parse_mode="HTML",

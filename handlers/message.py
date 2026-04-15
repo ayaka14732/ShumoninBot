@@ -59,15 +59,15 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
     bot: Bot = context.bot
     message_text = update.message.text or ""
 
-    # Track this message so it can be deleted if the user fails verification
-    queries.append_pending_msg_id(chat_id, user_id, update.message.message_id)
-
     # Pre-check: verification expiry
     if int(time.time()) > pending["expire_time"]:
         logger.info("User %s in chat %s verification expired during message handling", user_id, chat_id)
         from core.scheduler import _handle_expiry
         await _handle_expiry(bot, pending)
         return
+
+    # Track this message so it can be deleted if the user fails verification
+    queries.append_pending_msg_id(chat_id, user_id, update.message.message_id)
 
     # Pre-check: message too long
     if len(message_text) > MAX_MESSAGE_LENGTH:
