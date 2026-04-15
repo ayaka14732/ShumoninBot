@@ -53,10 +53,19 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
 
     # Check if sender is a pending user
     pending = queries.get_pending_user(chat_id, user_id)
-    if not pending or pending["status"] != "pending":
+    if not pending:
         return
 
     bot: Bot = context.bot
+
+    # If already kicked/banned, silently delete any stray messages they send
+    if pending["status"] == "failed":
+        from core.actions import delete_message
+        await delete_message(bot, chat_id, update.message.message_id)
+        return
+
+    if pending["status"] != "pending":
+        return
     message_text = update.message.text or ""
 
     # Pre-check: verification expiry
