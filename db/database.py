@@ -74,14 +74,16 @@ def init_db() -> None:
         """)
     # Migration: rename timeout_sec → expiry_sec in group_settings
     try:
-        conn.execute("ALTER TABLE group_settings RENAME COLUMN timeout_sec TO expiry_sec")
+        with conn:
+            conn.execute("ALTER TABLE group_settings RENAME COLUMN timeout_sec TO expiry_sec")
         logger.info("Migrated group_settings: renamed timeout_sec to expiry_sec")
     except Exception:
         pass  # Column already renamed or doesn't exist
 
     # Migration: rename status value 'timeout' → 'expired' in pending_users
     try:
-        conn.execute("UPDATE pending_users SET status = 'expired' WHERE status = 'timeout'")
+        with conn:
+            conn.execute("UPDATE pending_users SET status = 'expired' WHERE status = 'timeout'")
         logger.info("Migrated pending_users: renamed status 'timeout' to 'expired'")
     except Exception:
         pass
