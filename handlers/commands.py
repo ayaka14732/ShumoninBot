@@ -7,7 +7,7 @@ import json
 import logging
 from telegram import Update, Bot
 from telegram.ext import ContextTypes
-from config import ALLOWED_CHAT_IDS, DEFAULT_TIMEOUT_SEC, BAN_THRESHOLD
+from config import ALLOWED_CHAT_IDS, DEFAULT_EXPIRY_SEC, BAN_THRESHOLD
 from db import queries
 from core.actions import get_bot_permissions, unban_user
 from handlers.shared import escape_html
@@ -51,7 +51,7 @@ async def cmd_setup(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     queries.upsert_admin_session(chat_id, user_id, "setup_question", {})
     await update.message.reply_text(
         "🔧 <b>Starting verification setup for this group.</b>\n\n"
-        "<b>Step 1/3:</b>\n\n"
+        "<b>Step 1/2:</b>\n\n"
         "Please enter the verification question to ask new members.\n\n"
         "<i>Example: What is RIME? Why do you want to join this group?</i>",
         parse_mode="HTML",
@@ -95,10 +95,10 @@ async def cmd_setexpected(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
 
 
 # ---------------------------------------------------------------------------
-# /settimeout — single-step timeout update
+# /setexpiry — single-step expiry update
 # ---------------------------------------------------------------------------
 
-async def cmd_settimeout(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+async def cmd_setexpiry(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     chat_id = update.effective_chat.id
     user_id = update.effective_user.id
     bot = context.bot
@@ -109,10 +109,10 @@ async def cmd_settimeout(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
         return
 
     settings = queries.get_group_settings(chat_id)
-    current_min = (settings["timeout_sec"] // 60) if settings else (DEFAULT_TIMEOUT_SEC // 60)
-    queries.upsert_admin_session(chat_id, user_id, "settimeout", {})
+    current_min = (settings["expiry_sec"] // 60) if settings else (DEFAULT_EXPIRY_SEC // 60)
+    queries.upsert_admin_session(chat_id, user_id, "setexpiry", {})
     await update.message.reply_text(
-        f"Please enter the timeout duration in minutes (current: {current_min}):"
+        f"Please enter the verification expiry duration in minutes (current: {current_min}):"
     )
 
 
@@ -138,7 +138,7 @@ async def cmd_settings(update: Update, context: ContextTypes.DEFAULT_TYPE) -> No
         )
         return
 
-    timeout_min = settings["timeout_sec"] // 60
+    expiry_min = settings["expiry_sec"] // 60
     question = escape_html(settings["question"] or "(not set)")
     expected = escape_html(settings["expected"] or "(not set)")
 
@@ -147,10 +147,10 @@ async def cmd_settings(update: Update, context: ContextTypes.DEFAULT_TYPE) -> No
         "──────────────────────────────\n"
         f"<b>Question:</b>\n{question}\n\n"
         f"<b>Criteria:</b>\n{expected}\n\n"
-        f"<b>Timeout:</b> {timeout_min} minutes\n"
+        f"<b>Expiry:</b> {expiry_min} minutes\n"
         f"<b>Failure cap:</b> {BAN_THRESHOLD} (banned on {BAN_THRESHOLD}rd failure)\n"
         "──────────────────────────────\n"
-        "Use /setquestion /setexpected /settimeout to update."
+        "Use /setquestion /setexpected /setexpiry to update."
     )
     await update.message.reply_text(text, parse_mode="HTML")
 
@@ -276,9 +276,8 @@ async def cmd_confirm(update: Update, context: ContextTypes.DEFAULT_TYPE) -> Non
     temp = json.loads(session["temp_data"])
     question = temp.get("question", "")
     expected = temp.get("expected", "")
-    timeout_sec = int(temp.get("timeout_sec", DEFAULT_TIMEOUT_SEC))
 
-    queries.upsert_group_settings(chat_id, question, expected, timeout_sec)
+    queries.upsert_group_settings(chat_id, question, expected, DEFAULT_EXPIRY_SEC)
     queries.delete_admin_session(chat_id, user_id)
 
     await update.message.reply_text("✅ Settings saved. Shumonin Bot will now verify new members.")
@@ -301,10 +300,10 @@ async def cmd_help(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
 
     text = (
         "<b>Admin Commands</b>\n\n"
-        "/setup — Guided setup: configure question, criteria, and timeout\n"
+        "/setup — Guided setup: configure question and criteria\n"
         "/setquestion — Update the verification question\n"
         "/setexpected — Update the scoring criteria\n"
-        "/settimeout — Update the timeout duration (in minutes)\n"
+        "/setexpiry — Update the verification expiry duration (in minutes)\n"
         "/settings — View current group settings\n"
         "/unban &lt;user_id&gt; — Reset bot-side ban and failure count\n"
         "/status — Check bot permissions\n"
@@ -340,7 +339,7 @@ async def handle_admin_setup_input(
         temp["question"] = text
         queries.upsert_admin_session(chat_id, user_id, "setup_expected", temp)
         await update.message.reply_text(
-            "<b>Step 2/3:</b>\n\n"
+            "<b>Step 2/2:</b>\n\n"
             "Please describe the scoring criteria in natural language.\n"
             "You can specify which questions require strict answers and which are flexible.",
             parse_mode="HTML",
@@ -348,33 +347,14 @@ async def handle_admin_setup_input(
 
     elif step == "setup_expected":
         temp["expected"] = text
-        queries.upsert_admin_session(chat_id, user_id, "setup_timeout", temp)
-        await update.message.reply_text(
-            "<b>Step 3/3:</b>\n\n"
-            f"Please enter the verification timeout in minutes. (Default: {DEFAULT_TIMEOUT_SEC // 60})",
-            parse_mode="HTML",
-        )
-
-    elif step == "setup_timeout":
-        try:
-            minutes = int(text.strip())
-            if minutes <= 0:
-                raise ValueError("Must be positive")
-        except ValueError:
-            await update.message.reply_text(
-                "❌ Invalid input. Please enter a positive integer (number of minutes)."
-            )
-            return
-        temp["timeout_sec"] = minutes * 60
         queries.upsert_admin_session(chat_id, user_id, "setup_confirm", temp)
 
         question_preview = escape_html(temp.get("question", ""))
         expected_preview = escape_html(temp.get("expected", ""))
         await update.message.reply_text(
-            "<b>Please confirm your settings:</b>\n\n"
+            "<b>Step 2/2 — Please confirm your settings:</b>\n\n"
             f"<b>Question:</b>\n{question_preview}\n\n"
             f"<b>Criteria:</b>\n{expected_preview}\n\n"
-            f"<b>Timeout:</b> {minutes} minutes\n\n"
             "Reply /confirm to save, or /cancel to discard.",
             parse_mode="HTML",
         )
@@ -391,7 +371,7 @@ async def handle_admin_setup_input(
         await update.message.reply_text("✅ Scoring criteria updated.")
         logger.info("Admin %s updated expected for chat %s", user_id, chat_id)
 
-    elif step == "settimeout":
+    elif step == "setexpiry":
         try:
             minutes = int(text.strip())
             if minutes <= 0:
@@ -401,10 +381,10 @@ async def handle_admin_setup_input(
                 "❌ Invalid input. Please enter a positive integer (number of minutes)."
             )
             return
-        queries.update_group_timeout(chat_id, minutes * 60)
+        queries.update_group_expiry(chat_id, minutes * 60)
         queries.delete_admin_session(chat_id, user_id)
-        await update.message.reply_text(f"✅ Timeout updated to {minutes} minutes.")
-        logger.info("Admin %s updated timeout to %d min for chat %s", user_id, minutes, chat_id)
+        await update.message.reply_text(f"✅ Expiry updated to {minutes} minutes.")
+        logger.info("Admin %s updated expiry to %d min for chat %s", user_id, minutes, chat_id)
 
     elif step == "setup_confirm":
         # Waiting for /confirm or /cancel — ignore other text

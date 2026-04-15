@@ -33,7 +33,7 @@ def init_db() -> None:
                 chat_id     INTEGER PRIMARY KEY,
                 question    TEXT    NOT NULL DEFAULT '',
                 expected    TEXT    NOT NULL DEFAULT '',
-                timeout_sec INTEGER NOT NULL DEFAULT 300
+                expiry_sec  INTEGER NOT NULL DEFAULT 120
             );
 
             CREATE TABLE IF NOT EXISTS pending_users (
@@ -45,6 +45,7 @@ def init_db() -> None:
                 expire_time     INTEGER NOT NULL,
                 attempt         INTEGER NOT NULL DEFAULT 1,
                 question_msg_id INTEGER,
+                join_msg_id     INTEGER,
                 conversation    TEXT    NOT NULL DEFAULT '[]',
                 status          TEXT    NOT NULL DEFAULT 'pending',
                 ai_fail_count   INTEGER NOT NULL DEFAULT 0,
@@ -71,11 +72,20 @@ def init_db() -> None:
                 PRIMARY KEY (chat_id, admin_user_id)
             );
         """)
-    # Migration: add join_msg_id column to pending_users if it doesn't exist yet
+    # Migration: rename timeout_sec → expiry_sec in group_settings
     try:
-        conn.execute("ALTER TABLE pending_users ADD COLUMN join_msg_id INTEGER")
-        logger.info("Migrated pending_users: added join_msg_id column")
+        with conn:
+            conn.execute("ALTER TABLE group_settings RENAME COLUMN timeout_sec TO expiry_sec")
+        logger.info("Migrated group_settings: renamed timeout_sec to expiry_sec")
     except Exception:
-        pass  # Column already exists
+        pass  # Column already renamed or doesn't exist
+
+    # Migration: rename status value 'timeout' → 'expired' in pending_users
+    try:
+        with conn:
+            conn.execute("UPDATE pending_users SET status = 'expired' WHERE status = 'timeout'")
+        logger.info("Migrated pending_users: renamed status 'timeout' to 'expired'")
+    except Exception:
+        pass
 
     logger.info("Database initialized at %s", DB_PATH)

@@ -5,11 +5,8 @@ The verifier tries each entry in sequence, falling back to the next on failure.
 Add, remove, or reorder entries here to change provider priority.
 """
 
-import os
 from dataclasses import dataclass
-from dotenv import load_dotenv
-
-load_dotenv()
+from config import OPENAI_API_KEY, OPENROUTER_API_KEY
 
 
 @dataclass
@@ -22,11 +19,11 @@ class ModelEntry:
 
 MODEL_CHAIN: list[ModelEntry] = [
     ModelEntry(
-        api_key=os.environ.get("OPENAI_API_KEY", ""),
+        api_key=OPENAI_API_KEY,
         model="gpt-4o-mini",
     ),
     ModelEntry(
-        api_key=os.environ.get("OPENROUTER_API_KEY", ""),
+        api_key=OPENROUTER_API_KEY,
         base_url="https://openrouter.ai/api/v1",
         model="qwen/qwen3.5-flash-02-23",
         extra_body={"thinking": {"type": "disabled"}},

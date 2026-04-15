@@ -59,22 +59,15 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
     bot: Bot = context.bot
     message_text = update.message.text or ""
 
+    # Pre-check: verification expiry
+    if int(time.time()) > pending["expire_time"]:
+        logger.info("User %s in chat %s verification expired during message handling", user_id, chat_id)
+        from core.scheduler import _handle_expiry
+        await _handle_expiry(bot, pending)
+        return
+
     # Track this message so it can be deleted if the user fails verification
     queries.append_pending_msg_id(chat_id, user_id, update.message.message_id)
-
-    # Pre-check: timeout
-    if int(time.time()) > pending["expire_time"]:
-        logger.info("User %s in chat %s timed out during message handling", user_id, chat_id)
-        updated = queries.update_pending_status(chat_id, user_id, "timeout")
-        if updated:
-            msg_id = pending.get("question_msg_id")
-            if msg_id:
-                from core.actions import delete_message
-                await delete_message(bot, chat_id, msg_id)
-            from core.scheduler import _handle_timeout
-            # Re-use timeout logic (already idempotent)
-            await _handle_timeout(bot, pending)
-        return
 
     # Pre-check: message too long
     if len(message_text) > MAX_MESSAGE_LENGTH:
@@ -89,26 +82,11 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
     answer_rounds = queries.increment_answer_rounds(chat_id, user_id)
     if answer_rounds > MAX_USER_ANSWER_ROUNDS:
         logger.info(
-            "User %s in chat %s exceeded max answer rounds (%d), timing out",
+            "User %s in chat %s exceeded max answer rounds (%d), expiring verification",
             user_id, chat_id, MAX_USER_ANSWER_ROUNDS
         )
-        updated = queries.update_pending_status(chat_id, user_id, "timeout")
-        if updated:
-            from core.actions import delete_message, kick_user, ban_user
-            from db.queries import increment_total_failures, set_user_banned
-            from config import BAN_THRESHOLD
-            join_msg_id = pending.get("join_msg_id")
-            if join_msg_id:
-                await delete_message(bot, chat_id, join_msg_id)
-            msg_id = pending.get("question_msg_id")
-            if msg_id:
-                await delete_message(bot, chat_id, msg_id)
-            total_failures = increment_total_failures(chat_id, user_id)
-            if total_failures >= BAN_THRESHOLD:
-                await ban_user(bot, chat_id, user_id)
-                set_user_banned(chat_id, user_id, True)
-            else:
-                await kick_user(bot, chat_id, user_id)
+        from core.scheduler import _handle_expiry
+        await _handle_expiry(bot, pending)
         return
 
     # Append user message to conversation history

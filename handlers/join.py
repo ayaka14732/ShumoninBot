@@ -9,7 +9,7 @@ import logging
 import time
 from telegram import Update, Bot, ChatMemberLeft, ChatMemberBanned, ChatMemberMember, ChatMemberRestricted
 from telegram.ext import ContextTypes
-from config import ALLOWED_CHAT_IDS, DEFAULT_TIMEOUT_SEC, BAN_THRESHOLD
+from config import ALLOWED_CHAT_IDS, DEFAULT_EXPIRY_SEC, BAN_THRESHOLD
 from db import queries
 from core import actions, verifier
 
@@ -157,7 +157,7 @@ async def _process_new_member(
         logger.debug("No verification settings for chat %s, allowing user %s", chat_id, user_id)
         return
 
-    timeout_sec = settings.get("timeout_sec") or DEFAULT_TIMEOUT_SEC
+    expiry_sec = settings.get("expiry_sec") or DEFAULT_EXPIRY_SEC
 
     # Restrict the user immediately
     await actions.restrict_user(bot, chat_id, user_id)
@@ -169,7 +169,7 @@ async def _process_new_member(
     remaining = BAN_THRESHOLD - total_failures
 
     # Calculate expiry
-    expire_time = int(time.time()) + timeout_sec
+    expire_time = int(time.time()) + expiry_sec
 
     # Insert/replace pending record
     queries.insert_pending_user(
