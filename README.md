@@ -117,7 +117,7 @@ python main.py
 
 - `/setquestion` — 修改驗證問題
 - `/setexpected` — 修改評分標準
-- `/setexpiry` — 修改驗證有效時間（預設為 2 分鐘）
+- `/setexpiry` — 修改驗證逾期時間（預設為 2 分鐘）
 
 ### 其他指令
 
