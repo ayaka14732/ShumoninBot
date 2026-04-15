@@ -39,8 +39,8 @@ def update_group_question(chat_id: int, question: str) -> None:
     conn = get_conn()
     with conn:
         conn.execute("""
-            INSERT INTO group_settings (chat_id, question, expected, expiry_sec)
-            VALUES (?, ?, '', 300)
+            INSERT INTO group_settings (chat_id, question, expected)
+            VALUES (?, ?, '')
             ON CONFLICT(chat_id) DO UPDATE SET question = excluded.question
         """, (chat_id, question))
 
@@ -49,8 +49,8 @@ def update_group_expected(chat_id: int, expected: str) -> None:
     conn = get_conn()
     with conn:
         conn.execute("""
-            INSERT INTO group_settings (chat_id, question, expected, expiry_sec)
-            VALUES (?, '', ?, 300)
+            INSERT INTO group_settings (chat_id, question, expected)
+            VALUES (?, '', ?)
             ON CONFLICT(chat_id) DO UPDATE SET expected = excluded.expected
         """, (chat_id, expected))
 

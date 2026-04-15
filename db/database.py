@@ -45,6 +45,7 @@ def init_db() -> None:
                 expire_time     INTEGER NOT NULL,
                 attempt         INTEGER NOT NULL DEFAULT 1,
                 question_msg_id INTEGER,
+                join_msg_id     INTEGER,
                 conversation    TEXT    NOT NULL DEFAULT '[]',
                 status          TEXT    NOT NULL DEFAULT 'pending',
                 ai_fail_count   INTEGER NOT NULL DEFAULT 0,
