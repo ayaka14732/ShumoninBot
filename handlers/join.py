@@ -182,19 +182,22 @@ async def _process_new_member(
         join_msg_id=join_msg_id,
     )
 
-    # --- Name pre-check ---
-    try:
-        name_result = verifier.check_name(display_name, username)
-        logger.info(
-            "Name check for user %s (%s): action=%s reason=%s",
-            user_id, display_name, name_result.get("action"), name_result.get("reason")
-        )
-        if name_result.get("action") == "kick":
-            await _fail_user(bot, chat_id, user_id, reason="Name pre-check failed")
-            return
-    except Exception as exc:
-        logger.error("Name check error for user %s: %s", user_id, exc)
-        # Fallback: continue with verification
+    # --- Optional name pre-check ---
+    if settings.get("name_check_enabled", 1):
+        try:
+            name_result = verifier.check_name(display_name, username)
+            logger.info(
+                "Name check for user %s (%s): action=%s reason=%s",
+                user_id, display_name, name_result.get("action"), name_result.get("reason")
+            )
+            if name_result.get("action") == "kick":
+                await _fail_user(bot, chat_id, user_id, reason="Name pre-check failed")
+                return
+        except Exception as exc:
+            logger.error("Name check error for user %s: %s", user_id, exc)
+            # Fallback: continue with verification
+    else:
+        logger.info("Name check skipped for user %s in chat %s", user_id, chat_id)
 
     # --- Send verification question ---
     mention = f'<a href="tg://user?id={user_id}">{_escape_html(display_name)}</a>'

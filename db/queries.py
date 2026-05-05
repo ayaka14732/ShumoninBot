@@ -65,6 +65,17 @@ def update_group_expiry(chat_id: int, expiry_sec: int) -> None:
         """, (chat_id, expiry_sec))
 
 
+def update_group_name_check_enabled(chat_id: int, enabled: bool) -> None:
+    conn = get_conn()
+    with conn:
+        conn.execute("""
+            INSERT INTO group_settings (chat_id, question, expected, name_check_enabled)
+            VALUES (?, '', '', ?)
+            ON CONFLICT(chat_id) DO UPDATE SET
+                name_check_enabled = excluded.name_check_enabled
+        """, (chat_id, int(enabled)))
+
+
 # ---------------------------------------------------------------------------
 # pending_users
 # ---------------------------------------------------------------------------

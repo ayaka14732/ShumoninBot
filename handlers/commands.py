@@ -117,6 +117,43 @@ async def cmd_setexpiry(update: Update, context: ContextTypes.DEFAULT_TYPE) -> N
 
 
 # ---------------------------------------------------------------------------
+# /setnamecheck on|off — toggle AI name pre-check
+# ---------------------------------------------------------------------------
+
+async def cmd_setnamecheck(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    chat_id = update.effective_chat.id
+    user_id = update.effective_user.id
+    bot = context.bot
+
+    if not _check_whitelist(chat_id):
+        return
+    if not await _is_admin(bot, chat_id, user_id):
+        return
+
+    if not context.args:
+        settings = queries.get_group_settings(chat_id) or {}
+        current = "on" if settings.get("name_check_enabled", 1) else "off"
+        await update.message.reply_text(
+            f"Usage: /setnamecheck on|off\nCurrent: {current}"
+        )
+        return
+
+    value = context.args[0].strip().lower()
+    if value == "on":
+        enabled = True
+    elif value == "off":
+        enabled = False
+    else:
+        await update.message.reply_text("❌ Invalid value. Use /setnamecheck on or /setnamecheck off.")
+        return
+
+    queries.update_group_name_check_enabled(chat_id, enabled)
+    status = "enabled" if enabled else "disabled"
+    await update.message.reply_text(f"✅ Name pre-check {status}.")
+    logger.info("Admin %s set name_check_enabled=%s for chat %s", user_id, enabled, chat_id)
+
+
+# ---------------------------------------------------------------------------
 # /settings — view current settings
 # ---------------------------------------------------------------------------
 
@@ -139,6 +176,7 @@ async def cmd_settings(update: Update, context: ContextTypes.DEFAULT_TYPE) -> No
         return
 
     expiry_min = settings["expiry_sec"] // 60
+    name_check = "On" if settings.get("name_check_enabled", 1) else "Off"
     question = escape_html(settings["question"] or "(not set)")
     expected = escape_html(settings["expected"] or "(not set)")
 
@@ -148,9 +186,10 @@ async def cmd_settings(update: Update, context: ContextTypes.DEFAULT_TYPE) -> No
         f"<b>Question:</b>\n{question}\n\n"
         f"<b>Criteria:</b>\n{expected}\n\n"
         f"<b>Expiry:</b> {expiry_min} minutes\n"
+        f"<b>Name pre-check:</b> {name_check}\n"
         f"<b>Failure cap:</b> {BAN_THRESHOLD} (banned on {BAN_THRESHOLD}rd failure)\n"
         "──────────────────────────────\n"
-        "Use /setquestion /setexpected /setexpiry to update."
+        "Use /setquestion /setexpected /setexpiry /setnamecheck to update."
     )
     await update.message.reply_text(text, parse_mode="HTML")
 
@@ -304,6 +343,7 @@ async def cmd_help(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         "/setquestion — Update the verification question\n"
         "/setexpected — Update the scoring criteria\n"
         "/setexpiry — Update the verification expiry duration (in minutes)\n"
+        "/setnamecheck on|off — Toggle AI name pre-check on join\n"
         "/settings — View current group settings\n"
         "/unban &lt;user_id&gt; — Reset bot-side ban and failure count\n"
         "/status — Check bot permissions\n"
