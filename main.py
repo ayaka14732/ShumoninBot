@@ -27,6 +27,7 @@ from handlers.commands import (
     cmd_setquestion,
     cmd_setexpected,
     cmd_setexpiry,
+    cmd_setnamecheck,
     cmd_settings,
     cmd_unban,
     cmd_status,
@@ -67,6 +68,7 @@ def main() -> None:
     application.add_handler(CommandHandler("setquestion", cmd_setquestion))
     application.add_handler(CommandHandler("setexpected", cmd_setexpected))
     application.add_handler(CommandHandler("setexpiry", cmd_setexpiry))
+    application.add_handler(CommandHandler("setnamecheck", cmd_setnamecheck))
     application.add_handler(CommandHandler("settings", cmd_settings))
     application.add_handler(CommandHandler("unban", cmd_unban))
     application.add_handler(CommandHandler("status", cmd_status))

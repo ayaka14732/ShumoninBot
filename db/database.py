@@ -33,7 +33,8 @@ def init_db() -> None:
                 chat_id     INTEGER PRIMARY KEY,
                 question    TEXT    NOT NULL DEFAULT '',
                 expected    TEXT    NOT NULL DEFAULT '',
-                expiry_sec  INTEGER NOT NULL DEFAULT 120
+                expiry_sec  INTEGER NOT NULL DEFAULT 120,
+                name_check_enabled INTEGER NOT NULL DEFAULT 1
             );
 
             CREATE TABLE IF NOT EXISTS pending_users (
@@ -79,6 +80,17 @@ def init_db() -> None:
         logger.info("Migrated group_settings: renamed timeout_sec to expiry_sec")
     except Exception:
         pass  # Column already renamed or doesn't exist
+
+    # Migration: add optional name pre-check toggle to group_settings
+    try:
+        with conn:
+            conn.execute(
+                "ALTER TABLE group_settings "
+                "ADD COLUMN name_check_enabled INTEGER NOT NULL DEFAULT 1"
+            )
+        logger.info("Migrated group_settings: added name_check_enabled")
+    except Exception:
+        pass  # Column already exists
 
     # Migration: rename status value 'timeout' → 'expired' in pending_users
     try:
