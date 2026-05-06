@@ -24,7 +24,7 @@ ALLOWED_CHAT_IDS: set[int] = (
 )
 
 # SQLite database file path
-DB_PATH: str = os.environ.get("DB_PATH", "bot.db")
+DB_PATH: str = os.environ.get("DB_PATH", "data/bot.db")
 
 # AI parameters
 AI_TEMPERATURE: float = 0.2

@@ -59,6 +59,8 @@
 
 ## 配置與啟動
 
+### 環境變數設定
+
 在專案根目錄建立 `.env` 文件：
 
 ```env
@@ -66,18 +68,68 @@ TELEGRAM_BOT_TOKEN=你的機械人Token
 OPENAI_API_KEY=你的OpenAI金鑰
 OPENROUTER_API_KEY=你的OpenRouter金鑰  # 選填，作為備用供應商
 ALLOWED_CHAT_IDS=-100123456789,-100987654321
-DB_PATH=bot.db
 ```
 
 `ALLOWED_CHAT_IDS` 填入機械人允許服務的羣組 ID，多個羣組以逗號分隔。機械人只會回應白名單內的羣組，其他羣組的事件一律忽略。
 
 取得羣組 ID 的方式：將 [@userinfobot](https://t.me/userinfobot) 加入羣組，它會告訴你羣組 ID（通常以 `-100` 開頭）。
 
-安裝依賴並啟動：
+### 本機直接執行
+
+在本機安裝依賴並啟動：
 
 ```bash
 pip install -r requirements.txt
 python main.py
+```
+
+本機執行時，SQLite 資料庫預設儲存在 `data/bot.db`。
+
+### Docker 容器執行
+
+容器內的 SQLite 資料庫會儲存在專案根目錄的 `data/` 目錄中，容器內路徑為 `/data/bot.db`。
+
+全新部署時，直接使用 Docker Compose 啟動：
+
+```bash
+docker compose up -d --build
+```
+
+若先前已用本機方式執行，並且已有本機資料庫 `bot.db`，遷移至 Docker 前請先停止正在執行的 `python main.py`。然後將現有資料庫移至 `data/` 目錄：
+
+```bash
+mkdir -p data
+mv bot.db* data/
+```
+
+完成後再啟動 Docker 版本：
+
+```bash
+docker compose up -d --build
+```
+
+查看運行狀態：
+
+```bash
+docker compose ps
+```
+
+查看 log：
+
+```bash
+docker compose logs -f bot
+```
+
+只看最近 100 行 log：
+
+```bash
+docker compose logs --tail=100 bot
+```
+
+停止機械人：
+
+```bash
+docker compose down
 ```
 
 ## 管理員設定
