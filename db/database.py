@@ -6,6 +6,7 @@ SQLite connection initialization and table creation.
 import sqlite3
 import threading
 import logging
+from pathlib import Path
 from config import DB_PATH
 
 logger = logging.getLogger(__name__)
@@ -17,6 +18,11 @@ _local = threading.local()
 def get_conn() -> sqlite3.Connection:
     """Return a thread-local SQLite connection."""
     if not hasattr(_local, "conn") or _local.conn is None:
+        # Ensure custom DB_PATH parent directories exist before SQLite opens the file.
+        db_parent = Path(DB_PATH).expanduser().parent
+        if db_parent != Path("."):
+            db_parent.mkdir(parents=True, exist_ok=True)
+
         _local.conn = sqlite3.connect(DB_PATH, check_same_thread=False)
         _local.conn.row_factory = sqlite3.Row
         _local.conn.execute("PRAGMA journal_mode=WAL")
