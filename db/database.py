@@ -19,7 +19,7 @@ def get_conn() -> sqlite3.Connection:
     """Return a thread-local SQLite connection."""
     if not hasattr(_local, "conn") or _local.conn is None:
         # Ensure custom DB_PATH parent directories exist before SQLite opens the file.
-        db_parent = Path(DB_PATH).expanduser().parent
+        db_parent = Path(DB_PATH).parent
         if db_parent != Path("."):
             db_parent.mkdir(parents=True, exist_ok=True)
 
