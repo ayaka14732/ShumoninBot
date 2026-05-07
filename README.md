@@ -89,41 +89,13 @@ python main.py
 
 容器內的 SQLite 資料庫會儲存在專案根目錄的 `data/` 目錄中，容器內路徑為 `/data/bot.db`。
 
-全新部署時，直接使用 Docker Compose 啟動：
+容器以非 root 用戶（UID 1000）運行，`data/` 目錄必須屬於 UID 1000，否則容器將無法寫入資料庫。
+
+先設定資料目錄權限，再啟動容器：
 
 ```bash
+chown -R 1000:1000 data
 docker compose up -d --build
-```
-
-若先前已用本機方式執行，並且已有本機資料庫 `bot.db`，遷移至 Docker 前請先停止正在執行的 `python main.py`。然後將現有資料庫移至 `data/` 目錄：
-
-```bash
-mkdir -p data
-mv bot.db* data/
-```
-
-完成後再啟動 Docker 版本：
-
-```bash
-docker compose up -d --build
-```
-
-查看運行狀態：
-
-```bash
-docker compose ps
-```
-
-查看 log：
-
-```bash
-docker compose logs -f bot
-```
-
-只看最近 100 行 log：
-
-```bash
-docker compose logs --tail=100 bot
 ```
 
 停止機械人：
