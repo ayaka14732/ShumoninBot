@@ -200,7 +200,7 @@ async def _process_new_member(
         logger.info("Name check skipped for user %s in chat %s", user_id, chat_id)
 
     # --- Send verification question ---
-    mention = f'<a href="tg://user?id={user_id}">{_escape_html(display_name)}</a>'
+    mention = f'<a href="tg://user?id={user_id}"><tg-spoiler>{_escape_html(display_name)}</tg-spoiler></a>'
     text = f"{mention} {_escape_html(settings['question'])}"
 
     try:
